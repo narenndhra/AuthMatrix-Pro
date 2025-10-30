@@ -152,5 +152,3 @@ Manual role-based testing is time-consuming — capturing requests for each role
 ## 👤 Author
 
 **Narendra Reddy (Entersoft Security)**  
-Version: **AuthMatrix Pro v1.1**  
-Includes bug fixes, request deduplication, and UI enhancements.
