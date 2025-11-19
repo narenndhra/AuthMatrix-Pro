@@ -9,7 +9,8 @@ from javax.swing.table import DefaultTableModel, DefaultTableCellRenderer, Table
 from javax.swing.RowFilter import regexFilter
 from javax.swing.event import ListSelectionListener
 from java.awt import (BorderLayout, GridLayout, Color, Dimension, FlowLayout, 
-                      Font, GradientPaint, Cursor)
+                      Font, GradientPaint, Cursor, Toolkit)
+from java.awt.datatransfer import StringSelection
 import json
 import threading
 import time
@@ -57,7 +58,7 @@ class VerdictCellRenderer(DefaultTableCellRenderer):
             c.setBackground(Color.WHITE)
             c.setForeground(Color.BLACK)
         if isSelected:
-            c.setBackground(Color(100, 181, 246))
+            c.setBackground(Color(220, 235, 255))
         return c
 
 class MessageEditorController(IMessageEditorController):
@@ -103,6 +104,7 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
         self.url_exclusions = []
         self.exclude_static_files = True
         self.store_full_messages = True
+        self.scope_only = False
         
         # Extended static file list
         self.static_extensions = [
@@ -128,13 +130,10 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
         self.build_ui()
         callbacks.registerHttpListener(self)
         callbacks.addSuiteTab(self)
-        print("[*] AuthMatrix Pro v1.1 loaded! (Bug Fixes Applied)")
-        print("[*] - Fixed: Cookie header consolidation")
-        print("[*] - Fixed: Body encoding handling")
-        print("[*] - Fixed: Thread safety with locks")
-        print("[*] - Added: Request deduplication")
-        print("[*] - Added: Memory management options")
-        print("[*] - Extended: Static file detection")
+        print("[*] AuthMatrix Pro v1.3 loaded! (Final Optimized Version)")
+        print("[*] OPTIMIZED: Removed stats cards for more space")
+        print("[*] OPTIMIZED: Better selection colors for screenshots")
+        print("[*] OPTIMIZED: Clean table design")
     
     def getTabCaption(self):
         return "AuthMatrix Pro"
@@ -177,14 +176,14 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
     def create_capture_tab(self):
         panel = JPanel(BorderLayout())
         header = GradientPanel(self.colors['gradient_start'], self.colors['gradient_end'])
-        header.setLayout(FlowLayout(FlowLayout.LEFT, 20, 15))
-        header.setPreferredSize(Dimension(0, 60))
+        header.setLayout(FlowLayout(FlowLayout.LEFT, 20, 8))
+        header.setPreferredSize(Dimension(0, 40))
         title = JLabel("Capture Roles")
-        title.setFont(Font("Segoe UI", Font.BOLD, 24))
+        title.setFont(Font("Segoe UI", Font.BOLD, 20))
         title.setForeground(Color.WHITE)
         header.add(title)
         subtitle = JLabel("Capture HTTP traffic for each role")
-        subtitle.setFont(Font("Segoe UI", Font.PLAIN, 13))
+        subtitle.setFont(Font("Segoe UI", Font.BOLD, 12))
         subtitle.setForeground(Color(255, 255, 255, 200))
         header.add(subtitle)
         panel.add(header, BorderLayout.NORTH)
@@ -202,7 +201,7 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
         ))
         info_panel.setMaximumSize(Dimension(32767, 80))
         info_text = JLabel("Quick Start: 1. Enter role -> 2. Start Capture -> 3. Browse app (use ALL features) -> 4. Stop")
-        info_text.setFont(Font("Segoe UI", Font.PLAIN, 12))
+        info_text.setFont(Font("Segoe UI", Font.BOLD, 12))
         info_panel.add(info_text)
         content.add(info_panel)
         content.add(Box.createRigidArea(Dimension(0, 20)))
@@ -267,10 +266,10 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
         
         self.capture_table_model = DefaultTableModel(["Role", "Requests", "Cookies", "Headers"], 0)
         self.capture_table = JTable(self.capture_table_model)
-        self.capture_table.setFont(Font("Segoe UI", Font.PLAIN, 11))
+        self.capture_table.setFont(Font("Segoe UI", Font.BOLD, 11))
         self.capture_table.setRowHeight(28)
-        self.capture_table.setSelectionBackground(self.colors['primary'])
-        self.capture_table.getTableHeader().setFont(Font("Segoe UI", Font.BOLD, 11))
+        self.capture_table.setSelectionBackground(Color(220, 235, 255))
+        self.capture_table.getTableHeader().setFont(Font("Segoe UI", Font.BOLD, 12))
         scroll = JScrollPane(self.capture_table)
         scroll.setPreferredSize(Dimension(0, 250))
         content.add(scroll)
@@ -288,10 +287,10 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
     def create_mapping_tab(self):
         panel = JPanel(BorderLayout())
         header = GradientPanel(self.colors['gradient_start'], self.colors['gradient_end'])
-        header.setLayout(FlowLayout(FlowLayout.LEFT, 20, 15))
-        header.setPreferredSize(Dimension(0, 60))
+        header.setLayout(FlowLayout(FlowLayout.LEFT, 20, 8))
+        header.setPreferredSize(Dimension(0, 40))
         title = JLabel("Configuration & Testing")
-        title.setFont(Font("Segoe UI", Font.BOLD, 24))
+        title.setFont(Font("Segoe UI", Font.BOLD, 20))
         title.setForeground(Color.WHITE)
         header.add(title)
         panel.add(header, BorderLayout.NORTH)
@@ -312,7 +311,7 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
             ),
             BorderFactory.createEmptyBorder(8, 12, 12, 12)
         ))
-        url_section.setMaximumSize(Dimension(32767, 180))
+        url_section.setMaximumSize(Dimension(32767, 200))
         
         self.exclude_static_checkbox = JCheckBox("Auto-exclude static files (.js, .css, .woff, images, etc.)", True)
         self.exclude_static_checkbox.setBackground(Color.WHITE)
@@ -326,6 +325,13 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
         self.store_messages_checkbox.setFont(Font("Segoe UI", Font.PLAIN, 11))
         self.store_messages_checkbox.addActionListener(lambda e: self.toggle_message_storage())
         url_section.add(self.store_messages_checkbox)
+        url_section.add(Box.createRigidArea(Dimension(0, 6)))
+        
+        self.scope_only_checkbox = JCheckBox("Test only URLs in Burp Suite scope", False)
+        self.scope_only_checkbox.setBackground(Color.WHITE)
+        self.scope_only_checkbox.setFont(Font("Segoe UI", Font.PLAIN, 11))
+        self.scope_only_checkbox.addActionListener(lambda e: self.toggle_scope_only())
+        url_section.add(self.scope_only_checkbox)
         url_section.add(Box.createRigidArea(Dimension(0, 8)))
         
         url_input = JPanel(FlowLayout(FlowLayout.LEFT, 6, 0))
@@ -370,10 +376,10 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
         
         self.mapping_table_model = DefaultTableModel(["Role", "Requests", "Cookies", "Headers", "Status"], 0)
         self.mapping_table = JTable(self.mapping_table_model)
-        self.mapping_table.setFont(Font("Segoe UI", Font.PLAIN, 11))
+        self.mapping_table.setFont(Font("Segoe UI", Font.BOLD, 11))
         self.mapping_table.setRowHeight(26)
-        self.mapping_table.setSelectionBackground(self.colors['primary'])
-        self.mapping_table.getTableHeader().setFont(Font("Segoe UI", Font.BOLD, 11))
+        self.mapping_table.setSelectionBackground(Color(220, 235, 255))
+        self.mapping_table.getTableHeader().setFont(Font("Segoe UI", Font.BOLD, 12))
         scroll = JScrollPane(self.mapping_table)
         scroll.setPreferredSize(Dimension(0, 140))
         baseline_section.add(scroll)
@@ -450,43 +456,26 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
     def create_dashboard_tab(self):
         panel = JPanel(BorderLayout())
         header = GradientPanel(self.colors['gradient_start'], self.colors['gradient_end'])
-        header.setLayout(FlowLayout(FlowLayout.LEFT, 20, 15))
-        header.setPreferredSize(Dimension(0, 60))
+        header.setLayout(FlowLayout(FlowLayout.LEFT, 20, 8))
+        header.setPreferredSize(Dimension(0, 40))
         title = JLabel("Results Dashboard")
-        title.setFont(Font("Segoe UI", Font.BOLD, 24))
+        title.setFont(Font("Segoe UI", Font.BOLD, 20))
         title.setForeground(Color.WHITE)
         header.add(title)
         panel.add(header, BorderLayout.NORTH)
         
         split_pane = JSplitPane(JSplitPane.VERTICAL_SPLIT)
-        split_pane.setDividerLocation(450)
-        split_pane.setResizeWeight(0.65)
+        split_pane.setDividerLocation(550)
+        split_pane.setResizeWeight(0.75)
         
         top_panel = JPanel(BorderLayout())
         
-        stats_panel = JPanel(GridLayout(1, 4, 10, 10))
-        stats_panel.setBackground(Color.WHITE)
-        stats_panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 8, 10))
-        stats_panel.setPreferredSize(Dimension(0, 80))
-        
-        self.total_card = self.create_stat_card("Total", "0", self.colors['primary'])
-        self.vuln_card = self.create_stat_card("Vulnerable", "0", self.colors['danger'])
-        self.safe_card = self.create_stat_card("Safe", "0", self.colors['success'])
-        self.susp_card = self.create_stat_card("Suspicious", "0", self.colors['warning'])
-        
-        stats_panel.add(self.total_card)
-        stats_panel.add(self.vuln_card)
-        stats_panel.add(self.safe_card)
-        stats_panel.add(self.susp_card)
-        
-        top_panel.add(stats_panel, BorderLayout.NORTH)
-        
-        filter_panel = JPanel(FlowLayout(FlowLayout.LEFT, 8, 6))
+        filter_panel = JPanel(FlowLayout(FlowLayout.LEFT, 8, 8))
         filter_panel.setBackground(Color.WHITE)
         filter_panel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color(220, 220, 220)))
         
         filter_label = JLabel("Filters:")
-        filter_label.setFont(Font("Segoe UI", Font.BOLD, 10))
+        filter_label.setFont(Font("Segoe UI", Font.BOLD, 11))
         filter_panel.add(filter_label)
         
         filter_panel.add(JLabel("Method:"))
@@ -518,18 +507,25 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
         reset_btn.setPreferredSize(Dimension(65, 24))
         filter_panel.add(reset_btn)
         
+        copy_url_btn = ModernButton("Copy URL", self.colors['warning'])
+        copy_url_btn.addActionListener(lambda e: self.copy_selected_url())
+        copy_url_btn.setPreferredSize(Dimension(85, 24))
+        filter_panel.add(copy_url_btn)
+        
         table_panel = JPanel(BorderLayout())
         table_panel.add(filter_panel, BorderLayout.NORTH)
         
-        self.results_table_model = DefaultTableModel(["Endpoint", "Method", "Role", "Status", "Verdict", "Details"], 0)
+        self.results_table_model = DefaultTableModel(["#", "Endpoint", "Method", "Role", "Status", "Verdict", "Details"], 0)
         self.results_table = JTable(self.results_table_model)
-        self.results_table.setFont(Font("Segoe UI", Font.PLAIN, 10))
-        self.results_table.setRowHeight(24)
-        self.results_table.setSelectionBackground(self.colors['primary'])
+        self.results_table.setFont(Font("Segoe UI", Font.PLAIN, 11))
+        self.results_table.setRowHeight(26)
+        self.results_table.setSelectionBackground(Color(220, 235, 255))
         self.results_table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
-        self.results_table.getTableHeader().setFont(Font("Segoe UI", Font.BOLD, 10))
-        self.results_table.getColumnModel().getColumn(4).setCellRenderer(VerdictCellRenderer())
-        self.results_table.getColumnModel().getColumn(0).setPreferredWidth(300)
+        self.results_table.getTableHeader().setFont(Font("Segoe UI", Font.BOLD, 12))
+        self.results_table.getColumnModel().getColumn(5).setCellRenderer(VerdictCellRenderer())
+        self.results_table.getColumnModel().getColumn(0).setPreferredWidth(40)
+        self.results_table.getColumnModel().getColumn(0).setMaxWidth(60)
+        self.results_table.getColumnModel().getColumn(1).setPreferredWidth(320)
         
         self.table_sorter = TableRowSorter(self.results_table_model)
         self.results_table.setRowSorter(self.table_sorter)
@@ -611,31 +607,6 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
         panel.add(split_pane, BorderLayout.CENTER)
         return panel
     
-    def create_stat_card(self, title, value, color):
-        card = JPanel()
-        card.setLayout(BoxLayout(card, BoxLayout.Y_AXIS))
-        card.setBackground(Color.WHITE)
-        card.setBorder(BorderFactory.createLineBorder(color, 2))
-        
-        value_label = JLabel(value, SwingConstants.CENTER)
-        value_label.setFont(Font("Segoe UI", Font.BOLD, 24))
-        value_label.setForeground(color)
-        value_label.setAlignmentX(JLabel.CENTER_ALIGNMENT)
-        
-        title_label = JLabel(title, SwingConstants.CENTER)
-        title_label.setFont(Font("Segoe UI", Font.PLAIN, 11))
-        title_label.setForeground(Color.GRAY)
-        title_label.setAlignmentX(JLabel.CENTER_ALIGNMENT)
-        
-        card.add(Box.createVerticalGlue())
-        card.add(value_label)
-        card.add(Box.createRigidArea(Dimension(0, 4)))
-        card.add(title_label)
-        card.add(Box.createVerticalGlue())
-        
-        card.putClientProperty("value_label", value_label)
-        return card
-    
     def toggle_static_exclusion(self):
         self.exclude_static_files = self.exclude_static_checkbox.isSelected()
         print("[*] Static file exclusion: " + str(self.exclude_static_files))
@@ -645,6 +616,12 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
         print("[*] Full message storage: " + str(self.store_full_messages))
         if not self.store_full_messages:
             print("[*] WARNING: Request/Response viewer will be disabled for new results")
+    
+    def toggle_scope_only(self):
+        self.scope_only = self.scope_only_checkbox.isSelected()
+        print("[*] Scope only mode: " + str(self.scope_only))
+        if self.scope_only:
+            print("[*] WARNING: Only URLs in Burp Suite scope will be captured/tested")
     
     def add_url_pattern(self):
         pattern = self.url_pattern_field.getText().strip()
@@ -675,16 +652,16 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
         filters = []
         method = self.method_filter.getSelectedItem()
         if method != "All":
-            filters.append(regexFilter(method, 1))
+            filters.append(regexFilter(method, 2))
         role = self.role_filter.getSelectedItem()
         if role != "All":
-            filters.append(regexFilter(role, 2))
+            filters.append(regexFilter(role, 3))
         status = self.status_filter.getSelectedItem()
         if status != "All":
-            filters.append(regexFilter(status, 3))
+            filters.append(regexFilter(status, 4))
         verdict = self.verdict_filter.getSelectedItem()
         if verdict != "All":
-            filters.append(regexFilter(verdict, 4))
+            filters.append(regexFilter(verdict, 5))
         if filters:
             from javax.swing.RowFilter import andFilter
             self.table_sorter.setRowFilter(andFilter(filters))
@@ -697,6 +674,22 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
         self.status_filter.setSelectedIndex(0)
         self.verdict_filter.setSelectedIndex(0)
         self.table_sorter.setRowFilter(None)
+    
+    def copy_selected_url(self):
+        row = self.results_table.getSelectedRow()
+        if row >= 0:
+            model_row = self.results_table.convertRowIndexToModel(row)
+            url = self.results_table_model.getValueAt(model_row, 1)
+            try:
+                clipboard = Toolkit.getDefaultToolkit().getSystemClipboard()
+                clipboard.setContents(StringSelection(str(url)), None)
+                print("[+] Copied URL: " + str(url))
+                JOptionPane.showMessageDialog(self.main_panel, "URL copied to clipboard!", "Success", JOptionPane.INFORMATION_MESSAGE)
+            except Exception as e:
+                print("[-] Copy failed: " + str(e))
+                JOptionPane.showMessageDialog(self.main_panel, "Failed to copy: " + str(e), "Error", JOptionPane.ERROR_MESSAGE)
+        else:
+            JOptionPane.showMessageDialog(self.main_panel, "Select a row first!", "Error", JOptionPane.WARNING_MESSAGE)
     
     def display_request_response(self, row):
         if row >= 0:
@@ -1014,11 +1007,11 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
     
     def refresh_dashboard(self):
         self.results_table_model.setRowCount(0)
-        vuln = safe = susp = 0
         
         with self.results_lock:
-            for r in self.test_results:
+            for idx, r in enumerate(self.test_results, 1):
                 self.results_table_model.addRow([
+                    str(idx),
                     r['endpoint'], 
                     r['method'], 
                     r['role'], 
@@ -1026,24 +1019,8 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
                     r['verdict'], 
                     r.get('details', '')
                 ])
-                if r['verdict'] == 'VULNERABLE':
-                    vuln += 1
-                elif r['verdict'] == 'SAFE':
-                    safe += 1
-                elif r['verdict'] == 'SUSPICIOUS':
-                    susp += 1
-            total = len(self.test_results)
         
-        self.update_stat(self.total_card, str(total))
-        self.update_stat(self.vuln_card, str(vuln))
-        self.update_stat(self.safe_card, str(safe))
-        self.update_stat(self.susp_card, str(susp))
         self.update_role_filter()
-    
-    def update_stat(self, card, value):
-        label = card.getClientProperty("value_label")
-        if label:
-            label.setText(value)
     
     def delete_role(self, event):
         row = self.capture_table.getSelectedRow()
@@ -1100,7 +1077,7 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
                     "details": r['details']
                 })
             export_data = {
-                "extension": "AuthMatrix Pro v1.1",
+                "extension": "AuthMatrix Pro v1.3",
                 "baseline_role": self.baseline_role,
                 "export_type": "filtered" if filtered_only else "all",
                 "total": len(export_list),
@@ -1155,6 +1132,10 @@ class BurpExtender(IBurpExtender, ITab, IHttpListener):
                 method = analyzed.getMethod()
                 
                 print("[CAPTURE] " + method + " " + url[:80])
+                
+                if self.scope_only and not self._callbacks.isInScope(analyzed.getUrl()):
+                    print("[IGNORED] Out of scope: " + url[:80])
+                    return
                 
                 if self.should_ignore_url(url):
                     print("[IGNORED] Static: " + url[:80])
